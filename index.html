@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Sizzling Hot</title>
+    <style>
+      /* Постави HTML и body да немаат маргини, педињи и скрол барови */
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        height: 100%; /* Постави ја висината на 100% за целосно пополнување */
+        overflow: hidden; /* Ова ќе го спречи скролувањето */
+        background-color: #1099bb; /* Овој фон ќе се користи ако нема канвас */
+      }
+
+      /* Постави канвасот да биде блок елемент и да го пополни целосно прозорецот */
+      canvas {
+        display: block; /* Ова ја прави канвас елементот да се појавува без празни простори */
+        width: 100vw; /* Канвасот ќе има ширина на 100% од ширината на прозорецот */
+        height: 100vh; /* Канвасот ќе има висина на 100% од висината на прозорецот */
+      }
+    </style>
+  </head>
+  <body>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/7.3.2/pixi.min.js"></script>
+    <script type="module" src="/src/paytable.js"></script>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
