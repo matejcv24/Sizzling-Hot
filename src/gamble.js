@@ -54,8 +54,8 @@ export function createGamble(app, initialWinAmount, onGambleComplete) {
   // Card display (using Sprite for images)
   const cardWidth = totalReelWidth * 0.25;
   const cardHeight = totalReelHeight * 0.5;
-  const redTexture = Texture.from('/images/redcard.png');
-  const blackTexture = Texture.from('/images/blackcard.png');
+  const redTexture = Texture.from('./images/redcard.png');
+  const blackTexture = Texture.from('./images/blackcard.png');
   const card = new Sprite(redTexture); // Start with red card
   card.width = cardWidth;
   card.height = cardHeight;
@@ -78,9 +78,9 @@ export function createGamble(app, initialWinAmount, onGambleComplete) {
   });
 
   // Audio setup
-  const successAudio = new Audio('/audio/success.mp3');
-  const failAudio = new Audio('/audio/fail.mp3');
-  const congratulationsSound = new Audio('/audio/congratulations.mp3');
+  const successAudio = new Audio('./audio/success.mp3');
+  const failAudio = new Audio('./audio/fail.mp3');
+  const congratulationsSound = new Audio('./audio/congratulations.mp3');
 
   // Button dimensions
   const buttonWidth = totalReelWidth * 0.2;

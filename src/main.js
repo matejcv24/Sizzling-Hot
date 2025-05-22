@@ -22,17 +22,17 @@ import { createGamble } from './gamble.js';
   let texturesLoaded = true;
   try {
     await Assets.load([
-      '/images/cherries.png',
-      '/images/grape.png',
-      '/images/jack-pot.png',
-      '/images/lemon.png',
-      '/images/orange.png',
-      '/images/plum.png',
-      '/images/seven.png',
-      '/images/watermelon.png',
-      '/images/background.jpg',
-      '/images/redcard.png',
-      '/images/blackcard.png',
+      './images/cherries.png',
+      './images/grape.png',
+      './images/jack-pot.png',
+      './images/lemon.png',
+      './images/orange.png',
+      './images/plum.png',
+      './images/seven.png',
+      './images/watermelon.png',
+      './images/background.jpg',
+      './images/redcard.png',
+      './images/blackcard.png',
     ]);
   } catch (error) {
     console.error('Failed to load assets:', error);
@@ -40,7 +40,7 @@ import { createGamble } from './gamble.js';
   }
 
   const background = texturesLoaded
-    ? new Sprite(Texture.from('/images/background.jpg'))
+    ? new Sprite(Texture.from('./images/background.jpg'))
     : new Graphics()
         .rect(0, 0, app.screen.width, app.screen.height)
         .fill({ color: 0x333333 });
@@ -63,11 +63,11 @@ import { createGamble } from './gamble.js';
     0xff69b4, // Розева за линија 5
   ];
 
-  const clickSound = new Audio('/audio/clicksound.wav');
-  const winSound = new Audio('/audio/winsound.wav');
-  const collectSound = new Audio('/audio/collectsound.mp3');
-  const reelStopSound = new Audio('/audio/audio1.mp3');
-  const autoplaySound = new Audio('/audio/autoplaysound.mp3');
+  const clickSound = new Audio('./audio/clicksound.wav');
+  const winSound = new Audio('./audio/winsound.wav');
+  const collectSound = new Audio('./audio/collectsound.mp3');
+  const reelStopSound = new Audio('./audio/audio1.mp3');
+  const autoplaySound = new Audio('./audio/autoplaysound.mp3');
   reelStopSound.load();
 
   function playSound(sound) {
@@ -82,14 +82,14 @@ import { createGamble } from './gamble.js';
 
   const slotTextures = texturesLoaded
     ? {
-        cherries: Texture.from('/images/cherries.png'),
-        grape: Texture.from('/images/grape.png'),
-        jackpot: Texture.from('/images/jack-pot.png'),
-        lemon: Texture.from('/images/lemon.png'),
-        orange: Texture.from('/images/orange.png'),
-        plum: Texture.from('/images/plum.png'),
-        seven: Texture.from('/images/seven.png'),
-        watermelon: Texture.from('/images/watermelon.png'),
+        cherries: Texture.from('./images/cherries.png'),
+        grape: Texture.from('./images/grape.png'),
+        jackpot: Texture.from('./images/jack-pot.png'),
+        lemon: Texture.from('./images/lemon.png'),
+        orange: Texture.from('./images/orange.png'),
+        plum: Texture.from('./images/plum.png'),
+        seven: Texture.from('./images/seven.png'),
+        watermelon: Texture.from('./images/watermelon.png'),
       }
     : {
         cherries: Texture.WHITE,
@@ -627,9 +627,9 @@ import { createGamble } from './gamble.js';
     } else if (running) {
       // Play reelStopSound with echo effect for multiple reels
       function playEchoSound() {
-        const sound1 = new Audio('/audio/audio1.mp3');
-        const sound2 = new Audio('/audio/audio1.mp3');
-        const sound3 = new Audio('/audio/audio1.mp3');
+        const sound1 = new Audio('./audio/audio1.mp3');
+        const sound2 = new Audio('./audio/audio1.mp3');
+        const sound3 = new Audio('./audio/audio1.mp3');
 
         try {
           sound1.currentTime = 0;
