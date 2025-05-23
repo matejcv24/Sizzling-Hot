@@ -68,7 +68,9 @@ import { createGamble } from './gamble.js';
   const collectSound = new Audio('./audio/collectsound.mp3');
   const reelStopSound = new Audio('./audio/audio1.mp3');
   const autoplaySound = new Audio('./audio/autoplaysound.mp3');
+  const finishTransferSound = new Audio('./audio/finishtransfer.mp3');
   reelStopSound.load();
+  finishTransferSound.load();
 
   function playSound(sound) {
     console.log('Attempting to play sound:', sound.src);
@@ -246,6 +248,17 @@ import { createGamble } from './gamble.js';
     [0, 1, 2, 1, 0],
     [2, 1, 0, 1, 2],
   ];
+
+  let running = false;
+  let isAutoplayActive = false;
+  let hasWin = false;
+  let hasPendingWin = false;
+  let pendingWinAmount = 0;
+  let isCollecting = false;
+  let transferredAmount = 0;
+  let collectStartTime = 0;
+  let lastUpdateTime = 0;
+  let startClickCount = 0;
 
   const gradient = new FillGradient({
     type: 'linear',
@@ -614,18 +627,31 @@ import { createGamble } from './gamble.js';
       isGambleOpen,
       running,
       isAutoplayActive,
+      startClickCount,
       credits: winText?.text,
       payout: payoutText?.text,
     });
+
+    // Зголеми го бројачот на кликови
+    startClickCount++;
+    console.log(`Start button click count: ${startClickCount}`);
+
     if (hasPendingWin && !isCollecting && !isGambleOpen) {
+      // Собирање на добивката
       isCollecting = true;
       transferredAmount = 0;
       collectStartTime = Date.now();
       lastUpdateTime = collectStartTime;
       playSound(collectSound);
       console.log(`Collecting win: ${pendingWinAmount}`);
-    } else if (running) {
-      // Play reelStopSound with echo effect for multiple reels
+      startClickCount = 0; // Ресетирај го бројачот по собирањето
+      updateButtonStates();
+    } else if (
+      running &&
+      ((isAutoplayActive && startClickCount === 1) ||
+        (!isAutoplayActive && startClickCount <= 2))
+    ) {
+      // Мануелно запирање на ролните: 1 клик за autoplay, до 2 клика за нормален режим
       function playEchoSound() {
         const sound1 = new Audio('./audio/audio1.mp3');
         const sound2 = new Audio('./audio/audio1.mp3');
@@ -724,14 +750,28 @@ import { createGamble } from './gamble.js';
           }
         );
       }
-    } else if (!isAutoplayActive && !isCollecting && !isGambleOpen) {
+      if (isAutoplayActive) {
+        startClickCount = 2; // Принудно оневозможи го копчето по еден клик во autoplay
+      }
+      updateButtonStates(); // Оневозможи го копчето по мануелното запирање
+    } else if (
+      !isAutoplayActive &&
+      !isCollecting &&
+      !isGambleOpen &&
+      startClickCount === 1
+    ) {
       startPlay();
+      updateButtonStates(); // Ажурирај ја состојбата по започнувањето на спин
     } else {
-      console.log('Cannot start play: conditions not met', {
-        isAutoplayActive,
-        isCollecting,
-        isGambleOpen,
-      });
+      console.log(
+        'Cannot start play: conditions not met or click limit reached',
+        {
+          isAutoplayActive,
+          isCollecting,
+          isGambleOpen,
+          startClickCount,
+        }
+      );
     }
   });
   bottom.addChild(startButton);
@@ -804,32 +844,65 @@ import { createGamble } from './gamble.js';
   function updateButtonStates() {
     const currentCredits = parseInt(winText?.text) || 0;
     const currentPayout = parseInt(payoutText?.text) || 0;
-    const canPlay = currentCredits >= currentPayout && currentCredits > 0;
+    const canPlay =
+      currentCredits >= currentPayout &&
+      currentCredits > 0 &&
+      !isCollecting &&
+      !isGambleOpen &&
+      startClickCount < 2;
 
-    startButton.eventMode = canPlay ? 'static' : 'none';
-    startButton.cursor = canPlay ? 'pointer' : 'default';
+    const canCollect = canPlay && !isGambleOpen; // Оневозможи Collect ако е отворен Gamble
+    startButton.eventMode = canCollect ? 'static' : 'none';
+    startButton.cursor = canCollect ? 'pointer' : 'default';
     drawButton(
       startButton,
       buttonWidth,
       buttonHeight,
       cornerRadius,
-      canPlay ? buttonNormal : ['#666666', '#333333']
+      canCollect ? buttonNormal : ['#666666', '#333333']
     );
 
-    autoplayButton.eventMode = canPlay ? 'static' : 'none';
-    autoplayButton.cursor = canPlay ? 'pointer' : 'default';
+    autoplayButton.eventMode =
+      currentCredits >= currentPayout && currentCredits > 0 ? 'static' : 'none';
+    autoplayButton.cursor =
+      currentCredits >= currentPayout && currentCredits > 0
+        ? 'pointer'
+        : 'default';
     drawButton(
       autoplayButton,
       buttonWidth,
       buttonHeight,
       cornerRadius,
-      canPlay ? buttonNormal : ['#666666', '#333333']
+      currentCredits >= currentPayout && currentCredits > 0
+        ? buttonNormal
+        : ['#666666', '#333333']
+    );
+
+    gambleButton.eventMode =
+      hasWin && !isGambleOpen && !running && !isCollecting ? 'static' : 'none';
+    gambleButton.cursor =
+      hasWin && !isGambleOpen && !running && !isCollecting
+        ? 'pointer'
+        : 'default';
+    drawButton(
+      gambleButton,
+      buttonWidth,
+      buttonHeight,
+      cornerRadius,
+      hasWin && !isGambleOpen && !running && !isCollecting
+        ? buttonNormalBlue
+        : ['#666666', '#333333']
     );
 
     console.log('updateButtonStates:', {
       currentCredits,
       currentPayout,
       canPlay,
+      canCollect,
+      running,
+      isCollecting,
+      isGambleOpen,
+      startClickCount,
       startButtonEventMode: startButton.eventMode,
     });
   }
@@ -1104,19 +1177,10 @@ import { createGamble } from './gamble.js';
   bottom.y = app.screen.height - footerMargin;
   app.stage.addChild(bottom);
 
-  let running = false;
-  let isAutoplayActive = false;
-  let hasWin = false;
-  let hasPendingWin = false;
-  let pendingWinAmount = 0;
-  let isCollecting = false;
-  let transferredAmount = 0;
-  let collectStartTime = 0;
-  let lastUpdateTime = 0;
   const totalCollectDuration = 3000;
 
   let lastAutoplayTime = 0;
-  const autoplayDelay = 3000;
+  const autoplayDelay = 1000;
 
   const payoutTable = {
     cherries: { 2: 1, 3: 4, 4: 10, 5: 40 },
@@ -1167,6 +1231,24 @@ import { createGamble } from './gamble.js';
         isCollecting = false; // Explicitly reset isCollecting
         collectSound.pause();
         collectSound.currentTime = 0;
+
+        // Play finishTransferSound when collectSound ends
+        collectSound.onended = () => {
+          try {
+            finishTransferSound.currentTime = 0;
+            finishTransferSound
+              .play()
+              .catch((err) =>
+                console.warn('Finish transfer audio playback failed:', err)
+              );
+          } catch (err) {
+            console.warn('Error playing finish transfer sound:', err);
+          }
+        };
+
+        // Trigger the ended event by ensuring collectSound is fully stopped
+        collectSound.dispatchEvent(new Event('ended'));
+
         gambleButton.eventMode = 'none';
         gambleButton.cursor = 'default';
         drawButton(gambleButton, buttonWidth, buttonHeight, cornerRadius, [
@@ -1218,13 +1300,23 @@ import { createGamble } from './gamble.js';
   });
 
   function startPlay() {
-    if (running || hasPendingWin || isCollecting || isGambleOpen) {
-      console.log('Cannot start play: game is running or in another state', {
-        running,
-        hasPendingWin,
-        isCollecting,
-        isGambleOpen,
-      });
+    if (
+      running ||
+      hasPendingWin ||
+      isCollecting ||
+      isGambleOpen ||
+      startClickCount > 1
+    ) {
+      console.log(
+        'Cannot start play: game is running, in another state, or click limit reached',
+        {
+          running,
+          hasPendingWin,
+          isCollecting,
+          isGambleOpen,
+          startClickCount,
+        }
+      );
       return;
     }
 
@@ -1234,16 +1326,21 @@ import { createGamble } from './gamble.js';
     if (currentCredits === 0) {
       betText.text = 'No more credits';
       console.log('Cannot start play: No credits available');
+      startClickCount = 0; // Ресетирај го бројачот
+      updateButtonStates();
       return;
     }
 
     if (currentCredits < currentPayout) {
       betText.text = 'Not enough credits';
       console.log('Cannot start play: Insufficient credits');
+      startClickCount = 0; // Ресетирај го бројачот
+      updateButtonStates();
       return;
     }
 
     running = true;
+    updateButtonStates(); // Оневозможи го копчето веднаш по стартот
 
     // Reset symbol opacities and hide all highlight squares
     reels.forEach((reel) => {
@@ -1263,7 +1360,7 @@ import { createGamble } from './gamble.js';
     }
 
     betText.text = 'Good luck!';
-    startText.text = 'Start';
+    startText.text = 'Stop'; // Промени го текстот на копчето во "Stop"
 
     let completedReels = 0;
     const totalReels = reels.length;
@@ -1311,7 +1408,12 @@ import { createGamble } from './gamble.js';
                     null,
                     () => {
                       completedReels++;
-                      if (completedReels === totalReels) {
+                      if (
+                        completedReels === totalReels &&
+                        startClickCount < 2
+                      ) {
+                        console.log('Automatic stop completed');
+                        resetReels();
                         reelsComplete();
                       }
                     }
@@ -1416,7 +1518,7 @@ import { createGamble } from './gamble.js';
 
       let totalWin = 0;
       const currentPayout = parseInt(payoutText.text) || 0;
-      const winningSquares = new Map(); // Map за чување на квадратчиња и нивните линии
+      const winningSquares = new Map();
 
       const jackpotCount = symbolGrid
         .flat()
@@ -1445,7 +1547,7 @@ import { createGamble } from './gamble.js';
         symbolGrid.forEach((reelSymbols, reelIndex) => {
           reelSymbols.forEach((symbol, rowIndex) => {
             if (symbol.name === 'jackpot') {
-              winningSquares.set(`${reelIndex}-${rowIndex}`, 0); // Користи сина боја (индекс 0) за jackpot
+              winningSquares.set(`${reelIndex}-${rowIndex}`, 0);
             }
           });
         });
@@ -1487,14 +1589,13 @@ import { createGamble } from './gamble.js';
             );
             for (let i = 0; i < symbolCount; i++) {
               const row = line[i];
-              winningSquares.set(`${i}-${row}`, lineIndex); // Постави индекс на линијата
+              winningSquares.set(`${i}-${row}`, lineIndex);
             }
           }
         }
         totalWin += linePayout;
       });
 
-      // Apply win effects: highlight winning squares with line-specific colors and dim non-winning symbols
       if (winningSquares.size > 0) {
         console.log(
           'Applying win effects: highlighting winning squares with line-specific colors and dimming non-winning symbols'
@@ -1520,16 +1621,15 @@ import { createGamble } from './gamble.js';
           }
         });
 
-        // Dim non-winning symbols
         symbolGrid.forEach((reelSymbols, reelIndex) => {
           reelSymbols.forEach((symbolObj, rowIndex) => {
             if (
               symbolObj.symbol &&
               !winningSquares.has(`${reelIndex}-${rowIndex}`)
             ) {
-              symbolObj.symbol.alpha = 0.3; // Dim non-winning symbols
+              symbolObj.symbol.alpha = 0.3;
             } else if (symbolObj.symbol) {
-              symbolObj.symbol.alpha = 1.0; // Keep winning symbols fully opaque
+              symbolObj.symbol.alpha = 1.0;
             }
           });
         });
@@ -1553,7 +1653,6 @@ import { createGamble } from './gamble.js';
           buttonNormalBlue
         );
         console.log(`Total win: ${totalWin}`);
-        updateButtonStates();
       } else {
         hasWin = false;
         hasPendingWin = false;
@@ -1566,18 +1665,11 @@ import { createGamble } from './gamble.js';
           '#666666',
           '#333333',
         ]);
-        updateButtonStates();
       }
 
-      startButton.eventMode = 'static';
-      startButton.cursor = 'pointer';
-      drawButton(
-        startButton,
-        buttonWidth,
-        buttonHeight,
-        cornerRadius,
-        buttonNormal
-      );
+      // Ресетирај го бројачот на кликови и ажурирај ја состојбата на копчињата
+      startClickCount = 0; // НОВА ЛИНИЈА: Ресетирај го бројачот за нов спин
+      updateButtonStates();
     } catch (error) {
       console.error('Error in reelsComplete:', error);
       running = false;
@@ -1586,6 +1678,7 @@ import { createGamble } from './gamble.js';
       pendingWinAmount = 0;
       isCollecting = false;
       isGambleOpen = false;
+      startClickCount = 0; // НОВА ЛИНИЈА: Ресетирај го бројачот во случај на грешка
       resetReels();
       betText.text = 'Please place your bet';
       startText.text = 'Start';
@@ -1596,15 +1689,6 @@ import { createGamble } from './gamble.js';
         '#666666',
         '#333333',
       ]);
-      startButton.eventMode = 'static';
-      startButton.cursor = 'pointer';
-      drawButton(
-        startButton,
-        buttonWidth,
-        buttonHeight,
-        cornerRadius,
-        buttonNormal
-      );
       updateButtonStates();
     }
   }
@@ -1699,6 +1783,7 @@ import { createGamble } from './gamble.js';
     betText.text = 'Choose a card color';
     startText.text = 'Collect';
     gambleContainer.reset(pendingWinAmount);
+    updateButtonStates(); // Експлицитно ажурирај ја состојбата на копчињата
   }
 
   const leftLabels = [4, 2, 1, 3, 5];

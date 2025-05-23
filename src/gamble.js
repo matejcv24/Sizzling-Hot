@@ -185,6 +185,14 @@ export function createGamble(app, initialWinAmount, onGambleComplete) {
         }, 1000);
       } else {
         // Max gambles reached, end gamble
+        console.log(
+          `Max gambles (${maxGambles}) reached with successful guess! Playing congratulations sound.`
+        );
+        // Play congratulations audio
+        congratulationsSound.currentTime = 0; // Reset to start
+        congratulationsSound.play().catch((error) => {
+          console.warn('Congratulations audio playback failed:', error);
+        });
         redButton.eventMode = 'none';
         redButton.cursor = 'default';
         blackButton.eventMode = 'none';
