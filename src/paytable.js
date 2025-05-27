@@ -1,7 +1,12 @@
 import { Container, Graphics, Text, Sprite, FillGradient } from 'pixi.js';
 
 // Function to create the paytable container
-export function createPaytable(app, slotTextures, reelContainerPosition) {
+export function createPaytable(
+  app,
+  slotTextures,
+  reelContainerPosition,
+  currentPayout
+) {
   const paytableContainer = new Container();
   paytableContainer.visible = false; // Initially hidden
   paytableContainer.x = reelContainerPosition.x; // Align with reels
@@ -16,64 +21,64 @@ export function createPaytable(app, slotTextures, reelContainerPosition) {
     .stroke({ color: 0xffffff, width: 4 });
   paytableContainer.addChild(background);
 
-  // Define payouts (example structure)
+  // Define payouts synchronized with payoutTable from main code
   const payouts = [
     {
       symbol: 'seven',
       texture: slotTextures.seven,
-      5: '1000x',
-      4: '200x',
-      3: '20x',
+      5: 1000,
+      4: 200,
+      3: 20,
     },
     {
       symbol: 'jackpot',
       texture: slotTextures.jackpot,
-      5: '50x',
-      4: '10x',
-      3: '2x',
+      5: 50,
+      4: 10,
+      3: 2,
     },
     {
       symbol: 'watermelon',
       texture: slotTextures.watermelon,
-      5: '100x',
-      4: '40x',
-      3: '10x',
+      5: 100,
+      4: 40,
+      3: 10,
     },
     {
       symbol: 'grape',
       texture: slotTextures.grape,
-      5: '100x',
-      4: '40x',
-      3: '10x',
+      5: 100,
+      4: 40,
+      3: 10,
     },
     {
       symbol: 'orange',
       texture: slotTextures.orange,
-      5: '40x',
-      4: '10x',
-      3: '4x',
+      5: 40,
+      4: 10,
+      3: 4,
     },
     {
       symbol: 'lemon',
       texture: slotTextures.lemon,
-      5: '40x',
-      4: '10x',
-      3: '4x',
+      5: 40,
+      4: 10,
+      3: 4,
     },
     {
       symbol: 'plum',
       texture: slotTextures.plum,
-      5: '40x',
-      4: '10x',
-      3: '4x',
+      5: 40,
+      4: 10,
+      3: 4,
     },
     {
       symbol: 'cherries',
       texture: slotTextures.cherries,
-      5: '40x',
-      4: '10x',
-      3: '4x',
-      2: '1x',
+      5: 40,
+      4: 10,
+      3: 4,
+      2: 1,
     },
   ];
 
@@ -88,6 +93,9 @@ export function createPaytable(app, slotTextures, reelContainerPosition) {
     ['grape', 'orange', 'cherries'].includes(p.symbol)
   );
 
+  // Store references to payout text objects for dynamic updates
+  const payoutTextReferences = [];
+
   // Display payout information
   const rowHeight = paytableHeight * 0.25; // Adjusted for max 3 rows
   const symbolSize = rowHeight * 0.8;
@@ -95,7 +103,7 @@ export function createPaytable(app, slotTextures, reelContainerPosition) {
     fontFamily: 'Arial',
     fontSize: app.screen.width * 0.015,
     fill: 0xffff00,
-    fontWeight: 'bold', // Make payout text bold
+    fontWeight: 'bold',
   };
   const payoutTextHeight = app.screen.width * 0.02; // Height for each payout text line
   const columnWidth = paytableWidth * 0.3; // Width for left and right columns
@@ -126,14 +134,14 @@ export function createPaytable(app, slotTextures, reelContainerPosition) {
 
     // Payout texts (one per line, on the left)
     const payoutValues = [
-      { count: 5, value: payout[5] || '-' },
-      { count: 4, value: payout[4] || '-' },
-      { count: 3, value: payout[3] || '-' },
+      { count: 5, value: payout[5] || 0 },
+      { count: 4, value: payout[4] || 0 },
+      { count: 3, value: payout[3] || 0 },
     ];
 
     payoutValues.forEach((payoutItem, textIndex) => {
       const payoutText = new Text(
-        `${payoutItem.count}: ${payoutItem.value}`,
+        `${payoutItem.count}: ${payoutItem.value * currentPayout}`,
         textStyle
       );
       payoutText.x = paytableWidth * 0.05 + boxPadding; // Left edge of box with padding
@@ -142,6 +150,11 @@ export function createPaytable(app, slotTextures, reelContainerPosition) {
         (standardBoxHeight - 3 * payoutTextHeight) / 2 +
         textIndex * payoutTextHeight; // Center text block for 3 lines
       paytableContainer.addChild(payoutText);
+      payoutTextReferences.push({
+        text: payoutText,
+        count: payoutItem.count,
+        multiplier: payoutItem.value,
+      });
     });
 
     // Symbol sprite (on the right)
@@ -182,14 +195,14 @@ export function createPaytable(app, slotTextures, reelContainerPosition) {
 
     // Payout texts (one per line)
     const payoutValues = [
-      { count: 5, value: payout[5] || '-' },
-      { count: 4, value: payout[4] || '-' },
-      { count: 3, value: payout[3] || '-' },
+      { count: 5, value: payout[5] || 0 },
+      { count: 4, value: payout[4] || 0 },
+      { count: 3, value: payout[3] || 0 },
     ];
 
     payoutValues.forEach((payoutItem, textIndex) => {
       const payoutText = new Text(
-        `${payoutItem.count}: ${payoutItem.value}`,
+        `${payoutItem.count}: ${payoutItem.value * currentPayout}`,
         textStyle
       );
       payoutText.x =
@@ -199,10 +212,15 @@ export function createPaytable(app, slotTextures, reelContainerPosition) {
         (standardBoxHeight - 3 * payoutTextHeight) / 2 +
         textIndex * payoutTextHeight; // Center text block for 3 lines
       paytableContainer.addChild(payoutText);
+      payoutTextReferences.push({
+        text: payoutText,
+        count: payoutItem.count,
+        multiplier: payoutItem.value,
+      });
     });
   });
 
-  // Right column (grape, orange, cherries) - symbol on left, text on right - CHANGED LOGIC
+  // Right column (grape, orange, cherries) - symbol on left, text on right
   rightPayouts.forEach((payout, index) => {
     const rowY = paytableHeight * 0.15 + index * rowHeight;
 
@@ -223,7 +241,7 @@ export function createPaytable(app, slotTextures, reelContainerPosition) {
       .stroke({ color: 0xffffff, width: 2 });
     paytableContainer.addChild(box);
 
-    // Symbol sprite (on the left) - CHANGED POSITION
+    // Symbol sprite (on the left)
     const symbolSprite = new Sprite(payout.texture);
     symbolSprite.width = symbolSize;
     symbolSprite.height = symbolSize;
@@ -231,19 +249,19 @@ export function createPaytable(app, slotTextures, reelContainerPosition) {
     symbolSprite.y = rowY + (boxHeight - symbolSize) / 2; // Center vertically in box
     paytableContainer.addChild(symbolSprite);
 
-    // Payout texts (one per line, on the right) - CHANGED POSITION
+    // Payout texts (one per line, on the right)
     const payoutValues = [
-      { count: 5, value: payout[5] || '-' },
-      { count: 4, value: payout[4] || '-' },
-      { count: 3, value: payout[3] || '-' },
+      { count: 5, value: payout[5] || 0 },
+      { count: 4, value: payout[4] || 0 },
+      { count: 3, value: payout[3] || 0 },
     ];
     if (payout.symbol === 'cherries') {
-      payoutValues.push({ count: 2, value: payout[2] || '-' });
+      payoutValues.push({ count: 2, value: payout[2] || 0 });
     }
 
     payoutValues.forEach((payoutItem, textIndex) => {
       const payoutText = new Text(
-        `${payoutItem.count}: ${payoutItem.value}`,
+        `${payoutItem.count}: ${payoutItem.value * currentPayout}`,
         textStyle
       );
       payoutText.x =
@@ -253,8 +271,20 @@ export function createPaytable(app, slotTextures, reelContainerPosition) {
         (boxHeight - payoutValues.length * payoutTextHeight) / 2 +
         textIndex * payoutTextHeight; // Center text block
       paytableContainer.addChild(payoutText);
+      payoutTextReferences.push({
+        text: payoutText,
+        count: payoutItem.count,
+        multiplier: payoutItem.value,
+      });
     });
   });
+
+  // Add update function to paytableContainer
+  paytableContainer.updatePayouts = (newPayout) => {
+    payoutTextReferences.forEach((ref) => {
+      ref.text.text = `${ref.count}: ${ref.multiplier * newPayout}`;
+    });
+  };
 
   return paytableContainer;
 }

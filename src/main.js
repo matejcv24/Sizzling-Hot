@@ -198,13 +198,6 @@ import { createGamble } from './gamble.js';
   reelContainer.x = centerX;
   reelContainer.y = headerMargin;
 
-  const paytableContainer = createPaytable(app, slotTextures, {
-    x: centerX,
-    y: headerMargin,
-  });
-  paytableContainer.visible = false;
-  app.stage.addChild(paytableContainer);
-
   const gambleContainer = createGamble(app, 0, (finalWin) => {
     console.log(`Gamble complete, final win: ${finalWin}`);
     if (winText) {
@@ -1055,6 +1048,11 @@ import { createGamble } from './gamble.js';
           gapText.text = stakeValue.current.toString();
           if (payoutText) {
             payoutText.text = stakeToPayout[stakeValue.current].toString();
+            if (paytableContainer.updatePayouts) {
+              paytableContainer.updatePayouts(
+                stakeToPayout[stakeValue.current]
+              );
+            }
           }
           minusButton.eventMode = currentIndex - 1 === 0 ? 'none' : 'static';
           minusButton.cursor = currentIndex - 1 === 0 ? 'default' : 'pointer';
@@ -1166,6 +1164,11 @@ import { createGamble } from './gamble.js';
           gapText.text = stakeValue.current.toString();
           if (payoutText) {
             payoutText.text = stakeToPayout[stakeValue.current].toString();
+            if (paytableContainer.updatePayouts) {
+              paytableContainer.updatePayouts(
+                stakeToPayout[stakeValue.current]
+              );
+            }
           }
           minusButton.eventMode = currentIndex + 1 === 0 ? 'none' : 'static';
           minusButton.cursor = currentIndex + 1 === 0 ? 'default' : 'pointer';
@@ -1222,6 +1225,18 @@ import { createGamble } from './gamble.js';
 
   bottom.y = app.screen.height - footerMargin;
   app.stage.addChild(bottom);
+
+  const paytableContainer = createPaytable(
+    app,
+    slotTextures,
+    {
+      x: centerX,
+      y: headerMargin,
+    },
+    parseInt(payoutText.text)
+  );
+  paytableContainer.visible = false;
+  app.stage.addChild(paytableContainer);
 
   const totalCollectDuration = 3000;
 
