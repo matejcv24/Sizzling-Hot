@@ -64,11 +64,12 @@ import { createGamble } from './gamble.js';
   ];
 
   const clickSound = new Audio('./audio/clicksound.wav');
-  const winSound = new Audio('./audio/winsound.wav');
+  const winSound = new Audio('./audio/winsound.mp3');
   const collectSound = new Audio('./audio/collectsound.mp3');
   const reelStopSound = new Audio('./audio/audio1.mp3');
   const autoplaySound = new Audio('./audio/autoplaysound.mp3');
   const finishTransferSound = new Audio('./audio/finishtransfer.mp3');
+  const ffOfaKind = new Audio('./audio/ffofakind.wav');
   reelStopSound.load();
   finishTransferSound.load();
 
@@ -218,7 +219,9 @@ import { createGamble } from './gamble.js';
     gambleContainer.visible = false;
     paytableContainer.visible = false;
     gambleText.text = 'Gamble';
-    betText.text = 'Please place your bet';
+    const currentCredits = parseInt(winText.text) || 0;
+    betText.text =
+      currentCredits === 0 ? 'No more credits!' : 'Please place your bet';
     startText.text = 'Start';
     gambleButton.eventMode = 'none';
     gambleButton.cursor = 'default';
@@ -373,6 +376,7 @@ import { createGamble } from './gamble.js';
   const buttonNormalBlue = ['#add8e6', '#0000ff'];
   const buttonHoverBlue = ['#e6f0fa', '#6666ff'];
   const buttonPressedBlue = ['#8080ff', '#000080'];
+  const buttonActiveAutoplay = ['#006400', '#003300'];
 
   const autoplayButton = new Graphics();
   drawButton(
@@ -397,7 +401,7 @@ import { createGamble } from './gamble.js';
       buttonWidth,
       buttonHeight,
       cornerRadius,
-      buttonHover
+      isAutoplayActive ? buttonActiveAutoplay : buttonHover
     );
   });
   autoplayButton.on('pointerout', () => {
@@ -406,7 +410,7 @@ import { createGamble } from './gamble.js';
       buttonWidth,
       buttonHeight,
       cornerRadius,
-      buttonNormal
+      isAutoplayActive ? buttonActiveAutoplay : buttonNormal
     );
   });
   autoplayButton.on('pointerdown', () => {
@@ -419,16 +423,18 @@ import { createGamble } from './gamble.js';
     );
   });
   autoplayButton.on('pointerup', () => {
+    playSound(autoplaySound);
+    isAutoplayActive = !isAutoplayActive;
+    // Keep the text as "Autoplay"
+    autoplayText.text = 'Autoplay';
+    // Change the gradient based on the state
     drawButton(
       autoplayButton,
       buttonWidth,
       buttonHeight,
       cornerRadius,
-      buttonHover
+      isAutoplayActive ? buttonActiveAutoplay : buttonHover
     );
-    playSound(autoplaySound);
-    isAutoplayActive = !isAutoplayActive;
-    autoplayText.text = isAutoplayActive ? 'Stop' : 'Autoplay';
     updateButtonStates();
   });
   bottom.addChild(autoplayButton);
@@ -637,14 +643,50 @@ import { createGamble } from './gamble.js';
     console.log(`Start button click count: ${startClickCount}`);
 
     if (hasPendingWin && !isCollecting && !isGambleOpen) {
-      // Собирање на добивката
+      // Start collecting
       isCollecting = true;
       transferredAmount = 0;
       collectStartTime = Date.now();
       lastUpdateTime = collectStartTime;
-      playSound(collectSound);
+      playSound(collectSound); // Start sound (will be managed by ticker)
       console.log(`Collecting win: ${pendingWinAmount}`);
-      startClickCount = 0; // Ресетирај го бројачот по собирањето
+      startClickCount = 1; // First collect click
+      updateButtonStates();
+    } else if (isCollecting && startClickCount === 2) {
+      // Second collect click: Instantly complete transfer
+      console.log('Second collect click: Instant transfer completion');
+      if (winText) {
+        const currentWin = parseInt(winText.text) || 0;
+        const remainingAmount = pendingWinAmount - transferredAmount;
+        winText.text = (currentWin + remainingAmount).toString();
+      }
+      betText.text = 'Please place your bet';
+      startText.text = 'Start';
+      gambleText.text = 'Gamble';
+      hasWin = false;
+      hasPendingWin = false;
+      transferredAmount = 0;
+      pendingWinAmount = 0;
+      isCollecting = false;
+      collectSound.pause();
+      collectSound.currentTime = 0; // Reset sound
+      playSound(finishTransferSound); // Play finish transfer sound instantly
+      gambleButton.eventMode = 'none';
+      gambleButton.cursor = 'default';
+      drawButton(gambleButton, buttonWidth, buttonHeight, cornerRadius, [
+        '#666666',
+        '#333333',
+      ]);
+      startButton.eventMode = 'static';
+      startButton.cursor = 'pointer';
+      drawButton(
+        startButton,
+        buttonWidth,
+        buttonHeight,
+        cornerRadius,
+        buttonNormal
+      );
+      startClickCount = 0; // Reset click count
       updateButtonStates();
     } else if (
       running &&
@@ -850,8 +892,10 @@ import { createGamble } from './gamble.js';
       !isCollecting &&
       !isGambleOpen &&
       startClickCount < 2;
-
-    const canCollect = canPlay && !isGambleOpen; // Оневозможи Collect ако е отворен Gamble
+    const canCollect =
+      canPlay ||
+      (hasPendingWin && !isGambleOpen) ||
+      (isCollecting && startClickCount === 1);
     startButton.eventMode = canCollect ? 'static' : 'none';
     startButton.cursor = canCollect ? 'pointer' : 'default';
     drawButton(
@@ -874,7 +918,9 @@ import { createGamble } from './gamble.js';
       buttonHeight,
       cornerRadius,
       currentCredits >= currentPayout && currentCredits > 0
-        ? buttonNormal
+        ? isAutoplayActive
+          ? buttonActiveAutoplay
+          : buttonNormal
         : ['#666666', '#333333']
     );
 
@@ -1214,7 +1260,33 @@ import { createGamble } from './gamble.js';
     if (isCollecting) {
       const now = Date.now();
       const elapsed = now - collectStartTime;
+      const phase = Math.min(
+        1,
+        (now - collectStartTime) / totalCollectDuration
+      );
+      const easeInQuad = (t) => t * t;
+      const targetTransferred = Math.floor(
+        pendingWinAmount * easeInQuad(phase)
+      );
+      const increment = targetTransferred - transferredAmount;
+      if (increment > 0 && now - lastUpdateTime >= 16) {
+        transferredAmount += increment;
+        if (winText) {
+          const currentWin = parseInt(winText.text) || 0;
+          winText.text = (currentWin + increment).toString();
+        }
+        const remaining = pendingWinAmount - transferredAmount;
+        betText.text = `Win: ${Math.floor(remaining)}`;
+        lastUpdateTime = now;
+      }
+
+      // Sound management
+      if (elapsed === 0) {
+        // Start collect sound only once at the beginning
+        playSound(collectSound);
+      }
       if (elapsed >= totalCollectDuration) {
+        // Transfer complete
         console.log('Collection complete, resetting states');
         if (winText) {
           const currentWin = parseInt(winText.text) || 0;
@@ -1228,26 +1300,10 @@ import { createGamble } from './gamble.js';
         hasPendingWin = false;
         transferredAmount = 0;
         pendingWinAmount = 0;
-        isCollecting = false; // Explicitly reset isCollecting
+        isCollecting = false;
         collectSound.pause();
-        collectSound.currentTime = 0;
-
-        // Play finishTransferSound when collectSound ends
-        collectSound.onended = () => {
-          try {
-            finishTransferSound.currentTime = 0;
-            finishTransferSound
-              .play()
-              .catch((err) =>
-                console.warn('Finish transfer audio playback failed:', err)
-              );
-          } catch (err) {
-            console.warn('Error playing finish transfer sound:', err);
-          }
-        };
-
-        // Trigger the ended event by ensuring collectSound is fully stopped
-        collectSound.dispatchEvent(new Event('ended'));
+        collectSound.currentTime = 0; // Reset sound to start
+        playSound(finishTransferSound); // Play finish transfer sound
 
         gambleButton.eventMode = 'none';
         gambleButton.cursor = 'default';
@@ -1264,37 +1320,8 @@ import { createGamble } from './gamble.js';
           cornerRadius,
           buttonNormal
         );
+        startClickCount = 0; // Reset click count
         updateButtonStates();
-        console.log('Post-collection states:', {
-          running,
-          hasWin,
-          hasPendingWin,
-          isCollecting,
-          isGambleOpen,
-          startButtonEventMode: startButton.eventMode,
-          credits: winText?.text,
-          payout: payoutText?.text,
-        });
-      } else {
-        const phase = Math.min(
-          1,
-          (now - collectStartTime) / totalCollectDuration
-        );
-        const easeInQuad = (t) => t * t;
-        const targetTransferred = Math.floor(
-          pendingWinAmount * easeInQuad(phase)
-        );
-        const increment = targetTransferred - transferredAmount;
-        if (increment > 0 && now - lastUpdateTime >= 16) {
-          transferredAmount += increment;
-          if (winText) {
-            const currentWin = parseInt(winText.text) || 0;
-            winText.text = (currentWin + increment).toString();
-          }
-          const remaining = pendingWinAmount - transferredAmount;
-          betText.text = `Win: ${Math.floor(remaining)}`;
-          lastUpdateTime = now;
-        }
       }
     }
   });
@@ -1519,6 +1546,7 @@ import { createGamble } from './gamble.js';
       let totalWin = 0;
       const currentPayout = parseInt(payoutText.text) || 0;
       const winningSquares = new Map();
+      let playFFOfaKind = false;
 
       const jackpotCount = symbolGrid
         .flat()
@@ -1533,9 +1561,11 @@ import { createGamble } from './gamble.js';
             break;
           case 4:
             jackpotPayout = currentPayout * 10;
+            playFFOfaKind = true;
             break;
           case 5:
             jackpotPayout = currentPayout * 50;
+            playFFOfaKind = true;
             break;
           default:
             jackpotPayout = 0;
@@ -1591,6 +1621,9 @@ import { createGamble } from './gamble.js';
               const row = line[i];
               winningSquares.set(`${i}-${row}`, lineIndex);
             }
+            if (symbolCount >= 4) {
+              playFFOfaKind = true;
+            }
           }
         }
         totalWin += linePayout;
@@ -1636,13 +1669,18 @@ import { createGamble } from './gamble.js';
       }
 
       const hasWinCondition = hasJackpotWin || hasLineWin;
+      const currentCredits = parseInt(winText.text) || 0;
       if (hasWinCondition) {
         hasWin = true;
         hasPendingWin = true;
         pendingWinAmount = totalWin;
         startText.text = 'Collect';
         betText.text = `Win: ${totalWin}`;
-        playSound(winSound);
+        if (playFFOfaKind) {
+          playSound(ffOfaKind);
+        } else {
+          playSound(winSound);
+        }
         gambleButton.eventMode = 'static';
         gambleButton.cursor = 'pointer';
         drawButton(
@@ -1658,7 +1696,8 @@ import { createGamble } from './gamble.js';
         hasPendingWin = false;
         pendingWinAmount = 0;
         startText.text = 'Start';
-        betText.text = 'Please place your bet';
+        betText.text =
+          currentCredits === 0 ? 'No more credits!' : 'Please place your bet';
         gambleButton.eventMode = 'none';
         gambleButton.cursor = 'default';
         drawButton(gambleButton, buttonWidth, buttonHeight, cornerRadius, [
@@ -1667,8 +1706,7 @@ import { createGamble } from './gamble.js';
         ]);
       }
 
-      // Ресетирај го бројачот на кликови и ажурирај ја состојбата на копчињата
-      startClickCount = 0; // НОВА ЛИНИЈА: Ресетирај го бројачот за нов спин
+      startClickCount = 0;
       updateButtonStates();
     } catch (error) {
       console.error('Error in reelsComplete:', error);
@@ -1678,7 +1716,7 @@ import { createGamble } from './gamble.js';
       pendingWinAmount = 0;
       isCollecting = false;
       isGambleOpen = false;
-      startClickCount = 0; // НОВА ЛИНИЈА: Ресетирај го бројачот во случај на грешка
+      startClickCount = 0;
       resetReels();
       betText.text = 'Please place your bet';
       startText.text = 'Start';
