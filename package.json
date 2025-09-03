@@ -15,7 +15,8 @@
     "@pixi/filter-glow": "^5.2.1",
     "@pixi/sound": "^6.0.1",
     "@pixi/ui": "^2.2.3",
-    "pixi.js": "^8.9.2"
+    "pixi-filters": "^6.1.4",
+    "pixi.js": "^8.12.0"
   },
   "devDependencies": {
     "vite": "^6.3.5"

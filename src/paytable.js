@@ -1,4 +1,5 @@
 import { Container, Graphics, Text, Sprite, FillGradient } from 'pixi.js';
+import { GlowFilter } from 'pixi-filters';
 
 // Function to create the paytable container
 export function createPaytable(
@@ -163,6 +164,15 @@ export function createPaytable(
     symbolSprite.height = symbolSize;
     symbolSprite.x = paytableWidth * 0.05 + boxWidth - symbolSize - boxPadding; // Right edge of box with padding
     symbolSprite.y = rowY + (standardBoxHeight - symbolSize) / 2; // Center vertically in box
+    // Add GlowFilter
+    const glowFilter = new GlowFilter({
+      distance: 5,
+      outerStrength: 7,
+      innerStrength: 0,
+      color: 0xffffff, // Yellow glow
+      quality: 0.5,
+    });
+    symbolSprite.filters = [glowFilter];
     paytableContainer.addChild(symbolSprite);
   });
 
@@ -191,6 +201,15 @@ export function createPaytable(
     symbolSprite.height = symbolSize;
     symbolSprite.x = paytableWidth * 0.35 + boxPadding; // Left edge of box with padding
     symbolSprite.y = rowY + (standardBoxHeight - symbolSize) / 2; // Center vertically in box
+    // Add GlowFilter
+    const glowFilter = new GlowFilter({
+      distance: 5,
+      outerStrength: 7,
+      innerStrength: 0,
+      color: 0xffffff, // Yellow glow
+      quality: 0.5,
+    });
+    symbolSprite.filters = [glowFilter];
     paytableContainer.addChild(symbolSprite);
 
     // Payout texts (one per line)
@@ -247,6 +266,15 @@ export function createPaytable(
     symbolSprite.height = symbolSize;
     symbolSprite.x = paytableWidth * 0.65 + boxPadding; // Left edge of box with padding
     symbolSprite.y = rowY + (boxHeight - symbolSize) / 2; // Center vertically in box
+    // Add GlowFilter
+    const glowFilter = new GlowFilter({
+      distance: 5,
+      outerStrength: 7,
+      innerStrength: 0,
+      color: 0xffffff, // Yellow glow
+      quality: 0.5,
+    });
+    symbolSprite.filters = [glowFilter];
     paytableContainer.addChild(symbolSprite);
 
     // Payout texts (one per line, on the right)

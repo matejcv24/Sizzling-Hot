@@ -10,13 +10,16 @@ import {
   Text,
   TextStyle,
   Texture,
+  AnimatedSprite,
 } from 'pixi.js';
 import { createPaytable } from './paytable.js';
 import { createGamble } from './gamble.js';
+import { GlowFilter } from 'pixi-filters';
 
 (async () => {
   const app = new Application();
   await app.init({ background: 'transparent', resizeTo: window });
+  await Assets.load('./images/fire/fire.json');
   document.body.appendChild(app.canvas);
 
   let texturesLoaded = true;
@@ -56,12 +59,13 @@ import { createGamble } from './gamble.js';
   const REEL_SPACING = app.screen.width * 0.01;
   const SYMBOL_SCALE = 0.7;
   const LINE_COLORS = [
-    0x0000ff, // Сина за линија 1
+    0x3399ff, // Сина за линија 1
     0xff0000, // Црвена за линија 2
     0x00ff00, // Жолта за линија 3
     0xffff00, // Зелена за линија 4
     0xff69b4, // Розева за линија 5
   ];
+  const JACKPOT_BORDER_COLOR = 0x8b4513;
 
   const clickSound = new Audio('./audio/clicksound.wav');
   const winSound = new Audio('./audio/winsound.mp3');
@@ -74,7 +78,6 @@ import { createGamble } from './gamble.js';
   finishTransferSound.load();
 
   function playSound(sound) {
-    console.log('Attempting to play sound:', sound.src);
     try {
       sound.currentTime = 0;
       sound.play().catch((err) => console.warn('Audio playback failed:', err));
@@ -137,7 +140,7 @@ import { createGamble } from './gamble.js';
     const reelBackground = new Graphics()
       .rect(0, 0, REEL_WIDTH, REEL_HEIGHT)
       .fill({ color: 0x2c003e })
-      .stroke({ color: 0x8a8a8a, width: 6 });
+      .stroke({ color: 0xffffff, width: 4 });
     rc.addChild(reelBackground);
 
     const reel = {
@@ -153,18 +156,8 @@ import { createGamble } from './gamble.js';
     rc.filters = [reel.blur];
 
     for (let j = 0; j < ROW_COUNT; j++) {
-      const fieryGradient = new FillGradient({
-        type: 'linear',
-        colorStops: [
-          { offset: 0, color: 0xff0000 },
-          { offset: 0.5, color: 0xffa500 },
-          { offset: 1, color: 0xffff00 },
-        ],
-      });
-      const square = new Graphics()
-        .rect(0, j * SQUARE_HEIGHT, REEL_WIDTH, SQUARE_HEIGHT)
-        .stroke({ color: 0xffffff, width: 4 })
-        .fill(fieryGradient);
+      const square = new Graphics();
+      square.position.set(0, j * SQUARE_HEIGHT);
       square.visible = false;
       rc.addChild(square);
       reel.squares.push(square);
@@ -180,6 +173,14 @@ import { createGamble } from './gamble.js';
         (SQUARE_HEIGHT / symbol.height) * SYMBOL_SCALE
       );
       symbol.x = Math.round((REEL_WIDTH - symbol.width) / 2);
+      const glowFilter = new GlowFilter({
+        distance: 5,
+        outerStrength: 7,
+        innerStrength: 0,
+        color: 0xffffff,
+        quality: 0.5,
+      });
+      symbol.filters = [glowFilter];
       reel.symbols.push(symbol);
       rc.addChild(symbol);
     }
@@ -199,7 +200,6 @@ import { createGamble } from './gamble.js';
   reelContainer.y = headerMargin;
 
   const gambleContainer = createGamble(app, 0, (finalWin) => {
-    console.log(`Gamble complete, final win: ${finalWin}`);
     if (winText) {
       const currentWin = parseInt(winText.text) || 0;
       winText.text = (currentWin + finalWin).toString();
@@ -235,7 +235,6 @@ import { createGamble } from './gamble.js';
   });
   gambleContainer.x = centerX;
   gambleContainer.y = headerMargin;
-  app.stage.addChild(gambleContainer);
 
   const winLines = [
     [1, 1, 1, 1, 1],
@@ -278,14 +277,15 @@ import { createGamble } from './gamble.js';
 
   const style = new TextStyle({
     fontFamily: 'Arial',
-    fontSize: app.screen.width * 0.04,
+    fontSize: app.screen.width * 0.03,
     fontStyle: 'italic',
     fontWeight: 'bold',
     fill: { fill },
-    stroke: { color: 0x4a1850, width: 5 },
+    stroke: { color: 0x000000, width: 4 },
+    dropShadow: 2,
   });
 
-  const headerText = new Text('Sizzling Hot', style);
+  const headerText = new Text('Explosion Hot', style);
   headerText.x = Math.round((top.width - headerText.width) / 2);
   headerText.y = Math.round((headerMargin - headerText.height) / 2);
   top.addChild(headerText);
@@ -418,9 +418,7 @@ import { createGamble } from './gamble.js';
   autoplayButton.on('pointerup', () => {
     playSound(autoplaySound);
     isAutoplayActive = !isAutoplayActive;
-    // Keep the text as "Autoplay"
     autoplayText.text = 'Autoplay';
-    // Change the gradient based on the state
     drawButton(
       autoplayButton,
       buttonWidth,
@@ -493,7 +491,6 @@ import { createGamble } from './gamble.js';
     paytableText.text = isPaytableOpen ? 'Close' : 'Paytable';
     reelContainer.visible = !isPaytableOpen;
     paytableContainer.visible = isPaytableOpen;
-    console.log(isPaytableOpen ? 'Paytable opened' : 'Paytable closed');
   });
   bottom.addChild(paytableButton);
 
@@ -561,8 +558,6 @@ import { createGamble } from './gamble.js';
       );
       playSound(clickSound);
       gamblePlay();
-    } else {
-      console.log('Cannot open gamble: no win or gamble already open');
     }
   });
   bottom.addChild(gambleButton);
@@ -631,23 +626,21 @@ import { createGamble } from './gamble.js';
       payout: payoutText?.text,
     });
 
-    // Зголеми го бројачот на кликови
     startClickCount++;
-    console.log(`Start button click count: ${startClickCount}`);
+
+    allLines.forEach((line) => {
+      line.visible = false;
+    });
 
     if (hasPendingWin && !isCollecting && !isGambleOpen) {
-      // Start collecting
       isCollecting = true;
       transferredAmount = 0;
       collectStartTime = Date.now();
       lastUpdateTime = collectStartTime;
-      playSound(collectSound); // Start sound (will be managed by ticker)
-      console.log(`Collecting win: ${pendingWinAmount}`);
-      startClickCount = 1; // First collect click
+      playSound(collectSound);
+      startClickCount = 1;
       updateButtonStates();
     } else if (isCollecting && startClickCount === 2) {
-      // Second collect click: Instantly complete transfer
-      console.log('Second collect click: Instant transfer completion');
       if (winText) {
         const currentWin = parseInt(winText.text) || 0;
         const remainingAmount = pendingWinAmount - transferredAmount;
@@ -662,8 +655,8 @@ import { createGamble } from './gamble.js';
       pendingWinAmount = 0;
       isCollecting = false;
       collectSound.pause();
-      collectSound.currentTime = 0; // Reset sound
-      playSound(finishTransferSound); // Play finish transfer sound instantly
+      collectSound.currentTime = 0;
+      playSound(finishTransferSound);
       gambleButton.eventMode = 'none';
       gambleButton.cursor = 'default';
       drawButton(gambleButton, buttonWidth, buttonHeight, cornerRadius, [
@@ -679,14 +672,13 @@ import { createGamble } from './gamble.js';
         cornerRadius,
         buttonNormal
       );
-      startClickCount = 0; // Reset click count
+      startClickCount = 0;
       updateButtonStates();
     } else if (
       running &&
       ((isAutoplayActive && startClickCount === 1) ||
         (!isAutoplayActive && startClickCount <= 2))
     ) {
-      // Мануелно запирање на ролните: 1 клик за autoplay, до 2 клика за нормален режим
       function playEchoSound() {
         const sound1 = new Audio('./audio/audio1.mp3');
         const sound2 = new Audio('./audio/audio1.mp3');
@@ -774,7 +766,6 @@ import { createGamble } from './gamble.js';
                   () => {
                     completedReels++;
                     if (completedReels === totalReels) {
-                      console.log('Manual stop completed');
                       resetReels();
                       reelsComplete();
                     }
@@ -786,9 +777,9 @@ import { createGamble } from './gamble.js';
         );
       }
       if (isAutoplayActive) {
-        startClickCount = 2; // Принудно оневозможи го копчето по еден клик во autoplay
+        startClickCount = 2;
       }
-      updateButtonStates(); // Оневозможи го копчето по мануелното запирање
+      updateButtonStates();
     } else if (
       !isAutoplayActive &&
       !isCollecting &&
@@ -796,7 +787,7 @@ import { createGamble } from './gamble.js';
       startClickCount === 1
     ) {
       startPlay();
-      updateButtonStates(); // Ажурирај ја состојбата по започнувањето на спин
+      updateButtonStates();
     } else {
       console.log(
         'Cannot start play: conditions not met or click limit reached',
@@ -1080,6 +1071,9 @@ import { createGamble } from './gamble.js';
               ? disabledGradient
               : buttonNormal
           );
+          allLines.forEach((line) => {
+            line.visible = true;
+          });
           updateButtonStates();
         }
       });
@@ -1196,6 +1190,9 @@ import { createGamble } from './gamble.js';
               ? disabledGradient
               : buttonNormal
           );
+          allLines.forEach((line) => {
+            line.visible = true;
+          });
           updateButtonStates();
         }
       });
@@ -1236,7 +1233,6 @@ import { createGamble } from './gamble.js';
     parseInt(payoutText.text)
   );
   paytableContainer.visible = false;
-  app.stage.addChild(paytableContainer);
 
   const totalCollectDuration = 3000;
 
@@ -1254,10 +1250,6 @@ import { createGamble } from './gamble.js';
   };
 
   app.ticker.add((delta) => {
-    console.log(
-      `Ticker update: running=${running}, hasWin=${hasWin}, hasPendingWin=${hasPendingWin}, isCollecting=${isCollecting}, isGambleOpen=${isGambleOpen}, tweens=${tweening.length}, credits=${winText?.text}, payout=${payoutText?.text}`
-    );
-
     if (
       isAutoplayActive &&
       !running &&
@@ -1295,14 +1287,10 @@ import { createGamble } from './gamble.js';
         lastUpdateTime = now;
       }
 
-      // Sound management
       if (elapsed === 0) {
-        // Start collect sound only once at the beginning
         playSound(collectSound);
       }
       if (elapsed >= totalCollectDuration) {
-        // Transfer complete
-        console.log('Collection complete, resetting states');
         if (winText) {
           const currentWin = parseInt(winText.text) || 0;
           const remainingAmount = pendingWinAmount - transferredAmount;
@@ -1317,8 +1305,8 @@ import { createGamble } from './gamble.js';
         pendingWinAmount = 0;
         isCollecting = false;
         collectSound.pause();
-        collectSound.currentTime = 0; // Reset sound to start
-        playSound(finishTransferSound); // Play finish transfer sound
+        collectSound.currentTime = 0;
+        playSound(finishTransferSound);
 
         gambleButton.eventMode = 'none';
         gambleButton.cursor = 'default';
@@ -1335,7 +1323,7 @@ import { createGamble } from './gamble.js';
           cornerRadius,
           buttonNormal
         );
-        startClickCount = 0; // Reset click count
+        startClickCount = 0;
         updateButtonStates();
       }
     }
@@ -1367,30 +1355,27 @@ import { createGamble } from './gamble.js';
 
     if (currentCredits === 0) {
       betText.text = 'No more credits';
-      console.log('Cannot start play: No credits available');
-      startClickCount = 0; // Ресетирај го бројачот
+      startClickCount = 0;
       updateButtonStates();
       return;
     }
 
     if (currentCredits < currentPayout) {
       betText.text = 'Not enough credits';
-      console.log('Cannot start play: Insufficient credits');
-      startClickCount = 0; // Ресетирај го бројачот
+      startClickCount = 0;
       updateButtonStates();
       return;
     }
 
     running = true;
-    updateButtonStates(); // Оневозможи го копчето веднаш по стартот
+    updateButtonStates();
 
-    // Reset symbol opacities and hide all highlight squares
     reels.forEach((reel) => {
       reel.symbols.forEach((symbol) => {
-        symbol.alpha = 1.0; // Reset opacity for all symbols
+        symbol.alpha = 1.0;
       });
       reel.squares.forEach((square) => {
-        square.visible = false; // Hide all highlight squares
+        square.visible = false;
       });
     });
 
@@ -1402,7 +1387,7 @@ import { createGamble } from './gamble.js';
     }
 
     betText.text = 'Good luck!';
-    startText.text = 'Stop'; // Промени го текстот на копчето во "Stop"
+    startText.text = 'Stop';
 
     let completedReels = 0;
     const totalReels = reels.length;
@@ -1454,7 +1439,6 @@ import { createGamble } from './gamble.js';
                         completedReels === totalReels &&
                         startClickCount < 2
                       ) {
-                        console.log('Automatic stop completed');
                         resetReels();
                         reelsComplete();
                       }
@@ -1500,6 +1484,8 @@ import { createGamble } from './gamble.js';
         }
       }
       reel.squares.forEach((square) => {
+        square.removeChildren();
+        square.clear();
         square.visible = false;
       });
     });
@@ -1515,7 +1501,6 @@ import { createGamble } from './gamble.js';
     try {
       running = false;
       resetReels();
-      console.log('Reels complete, running set to false');
 
       const symbolGrid = reels.map((reel) => {
         const squareYs = [0, SQUARE_HEIGHT, 2 * SQUARE_HEIGHT];
@@ -1550,12 +1535,8 @@ import { createGamble } from './gamble.js';
         });
       });
 
-      console.log('Current symbols in each square:');
       symbolGrid.forEach((reelSymbols, reelIndex) => {
-        console.log(`Reel ${reelIndex + 1}:`);
-        reelSymbols.forEach((symbol, rowIndex) => {
-          console.log(`  Row ${rowIndex + 1}: ${symbol.name}`);
-        });
+        reelSymbols.forEach((symbol, rowIndex) => {});
       });
 
       let totalWin = 0;
@@ -1586,23 +1567,15 @@ import { createGamble } from './gamble.js';
             jackpotPayout = 0;
         }
         totalWin += jackpotPayout;
-        console.log(
-          `WIN: ${jackpotCount} jack-pot symbols, payout: ${jackpotPayout}`
-        );
         symbolGrid.forEach((reelSymbols, reelIndex) => {
           reelSymbols.forEach((symbol, rowIndex) => {
             if (symbol.name === 'jackpot') {
-              winningSquares.set(`${reelIndex}-${rowIndex}`, 0);
+              winningSquares.set(`${reelIndex}-${rowIndex}`, -1);
             }
           });
         });
-      } else {
-        console.log(
-          `No jack-pot scatter win (${jackpotCount} jack-pot symbols)`
-        );
       }
 
-      console.log('Checking win lines:');
       let hasLineWin = false;
       winLines.forEach((line, lineIndex) => {
         const lineSymbols = line.map(
@@ -1627,11 +1600,6 @@ import { createGamble } from './gamble.js';
           const payouts = payoutTable[firstSymbol];
           if (payouts[symbolCount]) {
             linePayout = currentPayout * payouts[symbolCount];
-            console.log(
-              `Line ${
-                lineIndex + 1
-              } WIN: ${symbolCount} ${firstSymbol}, payout: ${linePayout}`
-            );
             for (let i = 0; i < symbolCount; i++) {
               const row = line[i];
               winningSquares.set(`${i}-${row}`, lineIndex);
@@ -1645,39 +1613,64 @@ import { createGamble } from './gamble.js';
       });
 
       if (winningSquares.size > 0) {
-        console.log(
-          'Applying win effects: highlighting winning squares with line-specific colors and dimming non-winning symbols'
+        const fireTextures = Object.values(
+          Assets.cache.get('./images/fire/fire.json').textures
         );
+
+        const winningLineIndices = new Set(
+          Array.from(winningSquares.values()).filter((idx) => idx >= 0)
+        );
+        allLines.forEach((line, index) => {
+          const lineNumber = index + 1;
+          line.visible = winningLineIndices.has(index);
+        });
+
         winningSquares.forEach((lineIndex, squareKey) => {
           const [reelIndex, rowIndex] = squareKey.split('-').map(Number);
           if (reels[reelIndex] && reels[reelIndex].squares[rowIndex]) {
             const square = reels[reelIndex].squares[rowIndex];
             square.clear();
-            const fieryGradient = new FillGradient({
-              type: 'linear',
-              colorStops: [
-                { offset: 0, color: 0xff0000 },
-                { offset: 0.5, color: 0xffa500 },
-                { offset: 1, color: 0xffff00 },
-              ],
-            });
-            square
-              .rect(0, rowIndex * SQUARE_HEIGHT, REEL_WIDTH, SQUARE_HEIGHT)
-              .stroke({ color: LINE_COLORS[lineIndex], width: 4 })
-              .fill(fieryGradient);
+
+            const fireAnimation = new AnimatedSprite(fireTextures);
+            fireAnimation.x = REEL_WIDTH / 2;
+            fireAnimation.y = SQUARE_HEIGHT / 2.1;
+            fireAnimation.anchor.set(0.5);
+            fireAnimation.scale.set(
+              REEL_WIDTH / fireAnimation.width,
+              SQUARE_HEIGHT / fireAnimation.height
+            );
+            fireAnimation.animationSpeed = 0.5;
+            fireAnimation.loop = true;
+            fireAnimation.play();
+
+            if (lineIndex >= 0) {
+              square
+                .rect(0, 0, REEL_WIDTH, SQUARE_HEIGHT)
+                .stroke({ color: LINE_COLORS[lineIndex], width: 5 });
+            } else if (lineIndex === -1) {
+              square
+                .rect(0, 0, REEL_WIDTH, SQUARE_HEIGHT)
+                .stroke({ color: JACKPOT_BORDER_COLOR, width: 5 });
+            }
+
+            square.addChild(fireAnimation);
             square.visible = true;
+
+            square.on('removed', () => {
+              square.removeChild(fireAnimation);
+              fireAnimation.destroy();
+            });
           }
         });
 
         symbolGrid.forEach((reelSymbols, reelIndex) => {
           reelSymbols.forEach((symbolObj, rowIndex) => {
-            if (
-              symbolObj.symbol &&
-              !winningSquares.has(`${reelIndex}-${rowIndex}`)
-            ) {
-              symbolObj.symbol.alpha = 0.3;
-            } else if (symbolObj.symbol) {
-              symbolObj.symbol.alpha = 1.0;
+            if (symbolObj.symbol) {
+              symbolObj.symbol.alpha = winningSquares.has(
+                `${reelIndex}-${rowIndex}`
+              )
+                ? 1.0
+                : 0.3;
             }
           });
         });
@@ -1705,7 +1698,6 @@ import { createGamble } from './gamble.js';
           cornerRadius,
           buttonNormalBlue
         );
-        console.log(`Total win: ${totalWin}`);
       } else {
         hasWin = false;
         hasPendingWin = false;
@@ -1719,6 +1711,9 @@ import { createGamble } from './gamble.js';
           '#666666',
           '#333333',
         ]);
+        allLines.forEach((line) => {
+          line.visible = false;
+        });
       }
 
       startClickCount = 0;
@@ -1742,6 +1737,9 @@ import { createGamble } from './gamble.js';
         '#666666',
         '#333333',
       ]);
+      allLines.forEach((line) => {
+        line.visible = false;
+      });
       updateButtonStates();
     }
   }
@@ -1822,12 +1820,8 @@ import { createGamble } from './gamble.js';
 
   function gamblePlay() {
     if (!hasPendingWin || isCollecting || isGambleOpen) {
-      console.log(
-        'Cannot gamble: No pending win, collecting, or gamble already open'
-      );
       return;
     }
-    console.log(`Opening gamble window with win amount: ${pendingWinAmount}`);
     isGambleOpen = true;
     gambleText.text = 'Close';
     reelContainer.visible = false;
@@ -1836,7 +1830,7 @@ import { createGamble } from './gamble.js';
     betText.text = 'Choose a card color';
     startText.text = 'Collect';
     gambleContainer.reset(pendingWinAmount);
-    updateButtonStates(); // Експлицитно ажурирај ја состојбата на копчињата
+    updateButtonStates();
   }
 
   const leftLabels = [4, 2, 1, 3, 5];
@@ -1852,6 +1846,103 @@ import { createGamble } from './gamble.js';
     3: 2,
     4: 2,
   };
+
+  const allLines = [];
+
+  function createConnectingLines(
+    labels,
+    labelPositions,
+    labelColors,
+    labelHeight,
+    labelWidth,
+    reelContainer,
+    REEL_COUNT,
+    REEL_WIDTH,
+    REEL_SPACING,
+    headerMargin,
+    app,
+    SQUARE_HEIGHT,
+    winLines,
+    visible = true
+  ) {
+    const targetLabels = [1, 2, 3, 4, 5];
+    targetLabels.forEach((targetNum) => {
+      const idx = labels.indexOf(targetNum);
+      if (idx === -1) return;
+
+      const row = labelPositions[idx];
+      let y;
+
+      if (row === 0) {
+        const totalHeight = labelHeight * 2 + 5;
+        const startY =
+          headerMargin +
+          row * SQUARE_HEIGHT +
+          (SQUARE_HEIGHT - totalHeight) / 2;
+        y = startY + (idx === 0 ? 0 : labelHeight + 5);
+      } else if (row === 2) {
+        const totalHeight = labelHeight * 2 + 5;
+        const startY =
+          headerMargin +
+          row * SQUARE_HEIGHT +
+          (SQUARE_HEIGHT - totalHeight) / 2;
+        y = startY + (idx === 3 ? 0 : labelHeight + 5);
+      } else {
+        y =
+          headerMargin +
+          row * SQUARE_HEIGHT +
+          (SQUARE_HEIGHT - labelHeight) / 2;
+      }
+      y += labelHeight / 2;
+
+      const startX = reelContainer.x - labelWidth - 10;
+      const endX =
+        reelContainer.x +
+        REEL_COUNT * REEL_WIDTH +
+        (REEL_COUNT - 1) * REEL_SPACING +
+        10 +
+        labelWidth;
+
+      const line = new Graphics();
+      if (targetNum === 4 || targetNum === 5) {
+        const lineIndex = targetNum - 1;
+        const path = winLines[lineIndex];
+        line.moveTo(startX, y);
+
+        const firstReelX = reelContainer.x + REEL_WIDTH / 2;
+        line.lineTo(firstReelX, y);
+
+        for (let i = 1; i < REEL_COUNT - 1; i++) {
+          const reelX =
+            reelContainer.x + i * (REEL_WIDTH + REEL_SPACING) + REEL_WIDTH / 2;
+          const reelY =
+            headerMargin + path[i] * SQUARE_HEIGHT + SQUARE_HEIGHT / 2;
+          line.lineTo(reelX, reelY);
+        }
+
+        const lastReelX =
+          reelContainer.x +
+          (REEL_COUNT - 1) * (REEL_WIDTH + REEL_SPACING) +
+          REEL_WIDTH / 2;
+        const lastReelY =
+          headerMargin +
+          path[REEL_COUNT - 1] * SQUARE_HEIGHT +
+          SQUARE_HEIGHT / 2;
+        line.lineTo(lastReelX, y);
+
+        line.lineTo(endX, y);
+      } else {
+        line.moveTo(startX, y).lineTo(endX, y);
+      }
+
+      line.stroke({ color: labelColors[idx], width: 4 });
+
+      line.visible = visible;
+
+      app.stage.addChild(line);
+      allLines.push(line);
+    });
+  }
 
   function createSideLabels(labels, side) {
     labels.forEach((num, idx) => {
@@ -1918,6 +2009,23 @@ import { createGamble } from './gamble.js';
     });
   }
 
+  createConnectingLines(
+    leftLabels,
+    labelPositions,
+    labelColors,
+    labelHeight,
+    labelWidth,
+    reelContainer,
+    REEL_COUNT,
+    REEL_WIDTH,
+    REEL_SPACING,
+    headerMargin,
+    app,
+    SQUARE_HEIGHT,
+    winLines
+  );
   createSideLabels(leftLabels, 'left');
   createSideLabels(rightLabels, 'right');
+  app.stage.addChild(gambleContainer);
+  app.stage.addChild(paytableContainer);
 })();

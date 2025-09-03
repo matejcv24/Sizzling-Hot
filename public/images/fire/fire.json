@@ -1,0 +1,95 @@
+{"frames": {
+
+"fire_wall_1.png":
+{
+	"frame": {"x":0,"y":0,"w":250,"h":250},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":250,"h":250},
+	"sourceSize": {"w":250,"h":250}
+},
+"fire_wall_2.png":
+{
+	"frame": {"x":250,"y":0,"w":250,"h":250},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":250,"h":250},
+	"sourceSize": {"w":250,"h":250}
+},
+"fire_wall_3.png":
+{
+	"frame": {"x":0,"y":250,"w":250,"h":250},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":250,"h":250},
+	"sourceSize": {"w":250,"h":250}
+},
+"fire_wall_4.png":
+{
+	"frame": {"x":250,"y":250,"w":250,"h":250},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":250,"h":250},
+	"sourceSize": {"w":250,"h":250}
+},
+"fire_wall_5.png":
+{
+	"frame": {"x":0,"y":500,"w":250,"h":250},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":250,"h":250},
+	"sourceSize": {"w":250,"h":250}
+},
+"fire_wall_6.png":
+{
+	"frame": {"x":250,"y":500,"w":250,"h":250},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":250,"h":250},
+	"sourceSize": {"w":250,"h":250}
+},
+"fire_wall_7.png":
+{
+	"frame": {"x":0,"y":750,"w":250,"h":250},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":250,"h":250},
+	"sourceSize": {"w":250,"h":250}
+},
+"fire_wall_8.png":
+{
+	"frame": {"x":250,"y":750,"w":250,"h":250},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":250,"h":250},
+	"sourceSize": {"w":250,"h":250}
+},
+"fire_wall_9.png":
+{
+	"frame": {"x":0,"y":1000,"w":250,"h":250},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":250,"h":250},
+	"sourceSize": {"w":250,"h":250}
+},
+"fire_wall_10.png":
+{
+	"frame": {"x":250,"y":1000,"w":250,"h":250},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":250,"h":250},
+	"sourceSize": {"w":250,"h":250}
+}},
+"animations": {
+	"fire_wall": ["fire_wall_1.png","fire_wall_2.png","fire_wall_3.png","fire_wall_4.png","fire_wall_5.png","fire_wall_6.png","fire_wall_7.png","fire_wall_8.png","fire_wall_9.png","fire_wall_10.png"]
+},
+"meta": {
+	"app": "https://www.codeandweb.com/texturepacker",
+	"version": "1.1",
+	"image": "fire.png",
+	"format": "RGBA8888",
+	"size": {"w":500,"h":1250},
+	"scale": "1",
+	"smartupdate": "$TexturePacker:SmartUpdate:c913bd32f936e9158ca2c1c7d7df2857:151ca9e975141791ba11dba6b94fe860:fe85b518f19a08db92d89ee48ba7169f$"
+}
+}
